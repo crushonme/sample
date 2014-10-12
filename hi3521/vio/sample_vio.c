@@ -2830,7 +2830,7 @@ HI_S32 sample_capture_only()
 	{
 		SAMPLE_PRT("system init failed with %d!\n", s32Ret);
 	}
-	//s32Ret = SAMPLE_OV7725_CfgV();
+	s32Ret = SAMPLE_OV7725_CfgV();
 	memset(&stDevAttr,0,sizeof(stDevAttr));
 
 	stDevAttr.enIntfMode = VI_MODE_BT656;
