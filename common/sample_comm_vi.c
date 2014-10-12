@@ -204,8 +204,8 @@ VI_CHN g_as32SubChn[VIU_MAX_CHN_NUM];
 
 HI_S32 SAMPLE_OV7725_CfgV()
 {
-#if 1
-    int fd;
+
+    int fd,mode,format,framerate;
 
     fd = open(OV7725_FILE, O_RDWR);
     if (fd < 0)
@@ -213,11 +213,13 @@ HI_S32 SAMPLE_OV7725_CfgV()
         SAMPLE_PRT("open ov7725 (%s) fail\n", OV7725_FILE);
         return -1;
     }
-    ioctl(fd, SET_OUTPUT_VGA, 0);//VGA mode
-    ioctl(fd, SET_OUTPUT_FORMAT, YUV);//YUV FORMAT 
-    ioctl(fd, SET_NIGHT_FRAMERATE, AUTOFRAMERATE_OFF);//night mode disable
+	mode = 0;
+	format = 0;
+	framerate = 0;
+    ioctl(fd, SET_OUTPUT_VGA, &mode);//VGA mode
+    ioctl(fd, SET_OUTPUT_FORMAT, &format);//YUV FORMAT 
+    ioctl(fd, SET_NIGHT_FRAMERATE, &framerate);//night mode disable
     close(fd);
-#endif
     return 0;
 
 }
@@ -497,10 +499,11 @@ HI_S32 SAMPLE_COMM_VI_ADStart(SAMPLE_VI_MODE_E enViMode, VIDEO_NORM_E enNorm)
         case SAMPLE_VI_MODE_1_D1:
 		case SAMPLE_VI_MODE_1_D1Cif:
             enWorkMode = VI_WORK_MODE_4Multiplex;
-            s32Ret = SAMPLE_TW2865_CfgV(enNorm, enWorkMode);
+            //s32Ret = SAMPLE_TW2865_CfgV(enNorm, enWorkMode);
+            s32Ret = SAMPLE_NVP_CfgV(enNorm, enWorkMode);
             if (s32Ret != HI_SUCCESS)
             {
-                SAMPLE_PRT("SAMPLE_TW2865_CfgV failed with %#x!\n",\
+                SAMPLE_PRT("SAMPLE_NVP_CfgV failed with %#x!\n",\
                         s32Ret);
                 return HI_FAILURE;
             }
@@ -513,7 +516,8 @@ HI_S32 SAMPLE_COMM_VI_ADStart(SAMPLE_VI_MODE_E enViMode, VIDEO_NORM_E enNorm)
         case SAMPLE_VI_MODE_8_2Cif:
 		case SAMPLE_VI_MODE_16_D1Cif:
             enWorkMode = VI_WORK_MODE_4Multiplex;
-            s32Ret = SAMPLE_TW2865_CfgV(enNorm, enWorkMode);
+            //s32Ret = SAMPLE_TW2865_CfgV(enNorm, enWorkMode);
+            s32Ret = SAMPLE_NVP_CfgV(enNorm, enWorkMode);
             if (s32Ret != HI_SUCCESS)
             {
                 SAMPLE_PRT("SAMPLE_TW2865_CfgV failed with %#x!\n",\
@@ -802,10 +806,10 @@ HI_S32 SAMPLE_COMM_VI_StartDev(VI_DEV ViDev, SAMPLE_VI_MODE_E enViMode)
 		case SAMPLE_VI_MODE_TEST:
 			if(ViDev == 0)
 			{
-		    	memcpy(&stViDevAttr,&DEV_ATTR_RGB_VGA,sizeof(stViDevAttr));
+		    	memcpy(&stViDevAttr,&DEV_ATTR_BT656D1_1MUX,sizeof(stViDevAttr));
             	SAMPLE_COMM_VI_SetMask(ViDev,&stViDevAttr);
 			}else{
-				memcpy(&stViDevAttr,&DEV_ATTR_BT656D1_1MUX,sizeof(stViDevAttr));
+				memcpy(&stViDevAttr,&DEV_ATTR_BT656D1_4MUX,sizeof(stViDevAttr));
             	SAMPLE_COMM_VI_SetMask(ViDev,&stViDevAttr);
 			}
             break;	

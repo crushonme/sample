@@ -49,6 +49,7 @@ HI_S32 SAMPLE_COMM_VO_GetWH(VO_INTF_SYNC_E enIntfSync, HI_U32 *pu32W,HI_U32 *pu3
         case VO_OUTPUT_1366x768_60:   *pu32W = 1366; *pu32H = 768;  *pu32Frm = 60; break;
         case VO_OUTPUT_1440x900_60: *pu32W = 1440; *pu32H = 900;  *pu32Frm = 60; break;
         case VO_OUTPUT_1280x800_60: *pu32W = 1280; *pu32H = 800;  *pu32Frm = 60; break;
+		case VO_OUTPUT_480P60: *pu32W = 640; *pu32H = 480;  *pu32Frm = 60; break;
         default: 
             SAMPLE_PRT("vo enIntfSync not support!\n");
             return HI_FAILURE;

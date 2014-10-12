@@ -2833,7 +2833,7 @@ HI_S32 sample_capture_only()
 	//s32Ret = SAMPLE_OV7725_CfgV();
 	memset(&stDevAttr,0,sizeof(stDevAttr));
 
-	stDevAttr.enIntfMode = VI_MODE_DIGITAL_CAMERA;
+	stDevAttr.enIntfMode = VI_MODE_BT656;
 	stDevAttr.enWorkMode = VI_WORK_MODE_1Multiplex;
 	stDevAttr.au32CompMask[0] = 0xFF000000;
 	stDevAttr.au32CompMask[1] = 0x0;
@@ -2842,6 +2842,7 @@ HI_S32 sample_capture_only()
 	stDevAttr.s32AdChnId[1] = -1;
 	stDevAttr.s32AdChnId[2] = -1;
 	stDevAttr.s32AdChnId[3] = -1;
+#if 0
 	stDevAttr.stSynCfg.enVsync = VI_VSYNC_PULSE;
 	stDevAttr.stSynCfg.enVsyncNeg = VI_VSYNC_NEG_HIGH;
 	stDevAttr.stSynCfg.enHsync= VI_HSYNC_VALID_SINGNAL;
@@ -2857,6 +2858,7 @@ HI_S32 sample_capture_only()
 	stDevAttr.stSynCfg.stTimingBlank.u32VsyncVbfb = 0;
 	stDevAttr.stSynCfg.stTimingBlank.u32VsyncVbact = 0;
 	stDevAttr.stSynCfg.stTimingBlank.u32VsyncVbbb = 0;
+#endif
 	SAMPLE_COMM_VI_SetMask(ViDev,&stDevAttr);
 
 	s32Ret = HI_MPI_VI_SetDevAttr(ViDev, &stDevAttr);
@@ -2909,8 +2911,8 @@ HI_S32 sample_capture_only()
     HI_S32 s32GrpCnt = 2,s32ChnCnt = 3;
     HI_S32 i, j;
 	
-	stGrpAttr.u32MaxW = 640*2;
-    stGrpAttr.u32MaxH = 480*2;
+	stGrpAttr.u32MaxW = 640;
+    stGrpAttr.u32MaxH = 480;
     stGrpAttr.bDrEn = HI_FALSE;
     stGrpAttr.bDbEn = HI_FALSE;
     stGrpAttr.bIeEn = HI_TRUE;
