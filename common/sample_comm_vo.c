@@ -212,7 +212,10 @@ HI_S32 SAMPLE_COMM_VO_StartChn(VO_DEV VoDev,VO_PUB_ATTR_S *pstPubAttr,SAMPLE_VO_
         stChnAttr.u32Priority       = 0;
         stChnAttr.bDeflicker        = HI_FALSE;
 
-        s32Ret = HI_MPI_VO_SetChnAttr(VoDev, i, &stChnAttr);
+        if(u32WndNum == 1)
+			s32Ret = HI_MPI_VO_SetChnAttr(VoDev, 4, &stChnAttr);
+		else
+			s32Ret = HI_MPI_VO_SetChnAttr(VoDev, i, &stChnAttr);
         if (s32Ret != HI_SUCCESS)
         {
             printf("%s(%d):failed with %#x!\n",\
@@ -220,7 +223,10 @@ HI_S32 SAMPLE_COMM_VO_StartChn(VO_DEV VoDev,VO_PUB_ATTR_S *pstPubAttr,SAMPLE_VO_
             return HI_FAILURE;
         }
 
-        s32Ret = HI_MPI_VO_EnableChn(VoDev, i);
+		if(u32WndNum == 1)
+			s32Ret = HI_MPI_VO_EnableChn(VoDev, 4);
+		else
+        	s32Ret = HI_MPI_VO_EnableChn(VoDev, i);
         if (s32Ret != HI_SUCCESS)
         {
             SAMPLE_PRT("failed with %#x!\n", s32Ret);

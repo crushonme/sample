@@ -2609,381 +2609,45 @@ END_1D1_ZOOM_0:
     
     return s32Ret;
 }
-HI_S32 sample_avandcmos()
+HI_S32 sample_ov7725()
 {
-    SAMPLE_VI_MODE_E enViMode = SAMPLE_VI_MODE_8_D1;
-
-    HI_U32 u32ViChnCnt = 8;
-    HI_S32 s32VpssGrpCnt = 8;
-    
-    VB_CONF_S stVbConf;
-    VI_CHN ViChn;
-    VPSS_GRP VpssGrp;
-    VPSS_GRP_ATTR_S stGrpAttr;
-    VPSS_CHN VpssChn_VoHD0 = VPSS_PRE0_CHN;
-    VO_DEV VoDev;
-    VO_CHN VoChn;
-    VO_PUB_ATTR_S stVoPubAttr,stVoPubAttrSD; 
-    SAMPLE_VO_MODE_E enVoMode, enPreVoMode;
-    
-    HI_S32 i;
-    HI_S32 s32Ret = HI_SUCCESS;
-    HI_U32 u32BlkSize;
-    HI_CHAR ch;
-    SIZE_S stSize;
-    HI_U32 u32WndNum;
-	
-	VO_WBC_ATTR_S stWbcAttr;
-
-    /******************************************
-     step  1: init variable 
-    ******************************************/
-    gs_u32ViFrmRate = (VIDEO_ENCODING_MODE_PAL== gs_enNorm)?25:30;
-    
-    memset(&stVbConf,0,sizeof(VB_CONF_S));
-
-    u32BlkSize = SAMPLE_COMM_SYS_CalcPicVbBlkSize(gs_enNorm,\
-                PIC_D1, SAMPLE_PIXEL_FORMAT, SAMPLE_SYS_ALIGN_WIDTH);
-    stVbConf.u32MaxPoolCnt = 128;
-
-    /* video buffer*/
-    //todo: vb=15
-    stVbConf.astCommPool[0].u32BlkSize = u32BlkSize;
-    stVbConf.astCommPool[0].u32BlkCnt = u32ViChnCnt * 9;
-
-    /******************************************
-     step 2: mpp system init. 
-    ******************************************/
-    s32Ret = SAMPLE_COMM_SYS_Init(&stVbConf);
-    if (HI_SUCCESS != s32Ret)
-    {
-        SAMPLE_PRT("system init failed with %d!\n", s32Ret);
-        goto END_8D1_0;
-    }
-
-    /******************************************
-     step 3: start vi dev & chn
-    ******************************************/
-    s32Ret = SAMPLE_COMM_VI_Start(enViMode, gs_enNorm);
-    if (HI_SUCCESS != s32Ret)
-    {
-        SAMPLE_PRT("start vi failed!\n");
-        goto END_8D1_0;
-    }
-	//added for cmos
-	{
-		
-		int fd,mode,format,framerate;
-		
-		fd = open("/dev/ov7725dev", O_RDWR);
-		if (fd < 0)
-		{
-			SAMPLE_PRT("open ov7725 fail\n");
-			return -1;
-		}
-		mode = 0;
-		format = 0;
-		framerate = 0;
-		ioctl(fd, SET_OUTPUT_VGA, &mode);//VGA mode
-		ioctl(fd, SET_OUTPUT_FORMAT, &format);//YUV FORMAT 
-		ioctl(fd, SET_NIGHT_FRAMERATE, &framerate);//night mode disable
-		close(fd);
-
-	}
-	{
-		#define CMOS_CAPTURE_DEV  3
-	VI_DEV_ATTR_S stDevAttr_cmos;
-	VI_CHN_ATTR_S stChnAttr_cmos;
-			memset(&stDevAttr_cmos,0,sizeof(stDevAttr_cmos));
-		
-			stDevAttr_cmos.enIntfMode = VI_MODE_BT656;
-			stDevAttr_cmos.enWorkMode = VI_WORK_MODE_1Multiplex;
-			stDevAttr_cmos.au32CompMask[0] = 0xFF;
-			stDevAttr_cmos.au32CompMask[1] = 0x0;
-			stDevAttr_cmos.enScanMode = VI_SCAN_PROGRESSIVE;
-			stDevAttr_cmos.s32AdChnId[0] = -1;
-			stDevAttr_cmos.s32AdChnId[1] = -1;
-			stDevAttr_cmos.s32AdChnId[2] = -1;
-			stDevAttr_cmos.s32AdChnId[3] = -1;
-			stDevAttr_cmos.enDataSeq = VI_INPUT_DATA_UYVY;
-#if 0
-			stDevAttr_cmos.stSynCfg.enVsync = VI_VSYNC_PULSE;
-			stDevAttr_cmos.stSynCfg.enVsyncNeg = VI_VSYNC_NEG_HIGH;
-			stDevAttr_cmos.stSynCfg.enHsync= VI_HSYNC_VALID_SINGNAL;
-			stDevAttr_cmos.stSynCfg.enHsyncNeg = VI_HSYNC_NEG_HIGH;
-			stDevAttr_cmos.stSynCfg.enVsyncValid= VI_VSYNC_NORM_PULSE;
-			stDevAttr_cmos.stSynCfg.enVsyncValidNeg= VI_VSYNC_VALID_NEG_HIGH;
-			stDevAttr_cmos.stSynCfg.stTimingBlank.u32HsyncHfb = 76;//未算上同步长度
-			stDevAttr_cmos.stSynCfg.stTimingBlank.u32HsyncAct = 640;
-			stDevAttr_cmos.stSynCfg.stTimingBlank.u32HsyncHbb = 64;
-			stDevAttr_cmos.stSynCfg.stTimingBlank.u32VsyncVfb = 20;
-			stDevAttr_cmos.stSynCfg.stTimingBlank.u32VsyncVact = 480;
-			stDevAttr_cmos.stSynCfg.stTimingBlank.u32VsyncVbb = 6;
-			stDevAttr_cmos.stSynCfg.stTimingBlank.u32VsyncVbfb = 0;
-			stDevAttr_cmos.stSynCfg.stTimingBlank.u32VsyncVbact = 0;
-			stDevAttr_cmos.stSynCfg.stTimingBlank.u32VsyncVbbb = 0;
-#endif
-			SAMPLE_COMM_VI_SetMask((VI_DEV)CMOS_CAPTURE_DEV,&stDevAttr_cmos);
-		
-			s32Ret = HI_MPI_VI_SetDevAttr(CMOS_CAPTURE_DEV, &stDevAttr_cmos);
-			if (s32Ret != HI_SUCCESS)
-			{
-			printf("Set dev attributes failed with error code %#x!\n", s32Ret);
-			return HI_FAILURE;
-			}
-		
-			s32Ret = HI_MPI_VI_EnableDev(CMOS_CAPTURE_DEV);
-			if (s32Ret != HI_SUCCESS)
-			{
-			printf("Enable dev failed with error code %#x!\n", s32Ret);
-			return HI_FAILURE;
-			}
-		
-			stChnAttr_cmos.stCapRect.s32X = 0;
-			stChnAttr_cmos.stCapRect.s32Y = 0;
-			stChnAttr_cmos.stCapRect.u32Width = 640;
-			stChnAttr_cmos.stCapRect.u32Height = 480;
-			stChnAttr_cmos.stDestSize.u32Width = 640;
-			stChnAttr_cmos.stDestSize.u32Height = 480;
-			stChnAttr_cmos.enCapSel = VI_CAPSEL_BOTH;
-			stChnAttr_cmos.enPixFormat = PIXEL_FORMAT_YUV_SEMIPLANAR_422;
-			stChnAttr_cmos.bMirror = HI_FALSE;
-			stChnAttr_cmos.bFilp = HI_FALSE;
-			stChnAttr_cmos.bChromaResample = HI_FALSE;
-			stChnAttr_cmos.s32SrcFrameRate = -1;
-			stChnAttr_cmos.s32FrameRate = -1;
-		
-			s32Ret = HI_MPI_VI_SetChnAttr(12,&stChnAttr_cmos);
-			if (s32Ret != HI_SUCCESS)
-			{
-			printf("Set chn attributes failed with error code %#x!\n", s32Ret);
-			return HI_FAILURE;
-			}
-		
-			s32Ret = HI_MPI_VI_EnableChn(12);
-			if (s32Ret != HI_SUCCESS)
-			{
-			printf("Enable chn failed with error code %#x!\n", s32Ret);
-			return HI_FAILURE;
-			}
-
-	}
-	
-
-    /******************************************
-     step 4: start vpss and vi bind vpss
-    ******************************************/
-    s32Ret = SAMPLE_COMM_SYS_GetPicSize(gs_enNorm, PIC_D1, &stSize);
-    if (HI_SUCCESS != s32Ret)
-    {
-        SAMPLE_PRT("SAMPLE_COMM_SYS_GetPicSize failed!\n");
-        goto END_8D1_0;
-    }
-    
-    stGrpAttr.u32MaxW = stSize.u32Width;
-    stGrpAttr.u32MaxH = stSize.u32Height;
-    stGrpAttr.bDrEn = HI_FALSE;
-    stGrpAttr.bDbEn = HI_FALSE;
-    stGrpAttr.bIeEn = HI_TRUE;
-    stGrpAttr.bNrEn = HI_TRUE;
-    stGrpAttr.bHistEn = HI_FALSE;
-    stGrpAttr.enDieMode = VPSS_DIE_MODE_AUTO;
-    stGrpAttr.enPixFmt = SAMPLE_PIXEL_FORMAT;
-
-    s32Ret = SAMPLE_COMM_VPSS_Start(s32VpssGrpCnt+1, &stSize, VPSS_MAX_CHN_NUM,NULL);
-    if (HI_SUCCESS != s32Ret)
-    {
-        SAMPLE_PRT("Start Vpss failed!\n");
-        goto END_8D1_1;
-    }
-
-    s32Ret = SAMPLE_COMM_VI_BindVpss(enViMode);
-    if (HI_SUCCESS != s32Ret)
-    {
-        SAMPLE_PRT("Vi bind Vpss failed!\n");
-        goto END_8D1_2;
-    }
-
-	//added for cmos 
-	{
-		MPP_CHN_S stSrcChn;
-    	MPP_CHN_S stDestChn;
-		stSrcChn.enModId = HI_ID_VIU;
-		stSrcChn.s32DevId = 3;//2;
-		stSrcChn.s32ChnId = 12;
-			
-		stDestChn.enModId = HI_ID_VPSS;
-		stDestChn.s32DevId = 8;
-		stDestChn.s32ChnId = 0;
-			
-		s32Ret = HI_MPI_SYS_Bind(&stSrcChn, &stDestChn);
-		if (s32Ret != HI_SUCCESS)
-		{
-			SAMPLE_PRT("failed with %#x!\n", s32Ret);
-			return HI_FAILURE;
-		}
-
-	}
-  /******************************************
-     step 6: start vo HD0 (HDMI+VGA), multi-screen, you can switch mode
-    ******************************************/
-    printf("start vo HD0.\n");
-    VoDev = SAMPLE_VO_DEV_DHD0;
-    u32WndNum = 16;
-    enVoMode = VO_MODE_1MUX;
-
-    if(VIDEO_ENCODING_MODE_PAL == gs_enNorm)
-    {
-        //stVoPubAttr.enIntfSync = VO_OUTPUT_1080P50;
-        stVoPubAttr.enIntfSync = VO_OUTPUT_1366x768_60;
-    }
-    else
-    {
-        //stVoPubAttr.enIntfSync = VO_OUTPUT_1080P60;
-        stVoPubAttr.enIntfSync = VO_OUTPUT_1366x768_60;
-    }
-
-	stVoPubAttr.enIntfType = VO_INTF_HDMI|VO_INTF_VGA;
-
-    stVoPubAttr.u32BgColor = 0x000000ff;
-    stVoPubAttr.bDoubleFrame = HI_TRUE;
-    
-    s32Ret = SAMPLE_COMM_VO_StartDevLayer(VoDev, &stVoPubAttr, gs_u32ViFrmRate);
-    if (HI_SUCCESS != s32Ret)
-    {
-        SAMPLE_PRT("Start SAMPLE_COMM_VO_StartDevLayer failed!\n");
-        goto END_8D1_4;
-    }
-    
-    s32Ret = SAMPLE_COMM_VO_StartChn(VoDev, &stVoPubAttr, enVoMode);
-    if (HI_SUCCESS != s32Ret)
-    {
-        SAMPLE_PRT("Start SAMPLE_COMM_VO_StartChn failed!\n");
-        goto END_8D1_5;
-    }
-
-    /* if it's displayed on HDMI, we should start HDMI */
-    if (stVoPubAttr.enIntfType & VO_INTF_HDMI)
-    {
-        if (HI_SUCCESS != SAMPLE_COMM_VO_HdmiStart(stVoPubAttr.enIntfSync))
-        {
-            SAMPLE_PRT("Start SAMPLE_COMM_VO_HdmiStart failed!\n");
-            goto END_8D1_5;
-        }
-    }
-    #if 0
-    for(i=0;i<u32WndNum;i++)
-    {
-        VoChn = i;
-        VpssGrp = i;
-        
-        s32Ret = SAMPLE_COMM_VO_BindVpss(VoDev,VoChn,VpssGrp,VpssChn_VoHD0);
-        if (HI_SUCCESS != s32Ret)
-        {
-            SAMPLE_PRT("Start VO failed!\n");
-            goto END_8D1_5;
-        }
-    }
-	#endif
-        
-     s32Ret = SAMPLE_COMM_VO_BindVpss(0,0,8,0);
-     if (HI_SUCCESS != s32Ret)
-     {
-         SAMPLE_PRT("Start VO failed!\n");
-         goto END_8D1_5;
-     }
-
-    while(1)
-    {
-    	printf("\tq) quit\n");
-		ch = getchar();
-        getchar();
- 		if ('q' == ch)
-        {
-            break;
-        }
-    }
-
-END_8D1_5:
-	if (stVoPubAttr.enIntfType & VO_INTF_HDMI)
-    {
-        SAMPLE_COMM_VO_HdmiStop();
-    }
-    VoDev = SAMPLE_VO_DEV_DHD0;
-    u32WndNum = 16;
-    enVoMode = VO_MODE_16MUX;
-    for(i=0;i<u32WndNum;i++)
-    {
-        VoChn = i;
-        VpssGrp = i;
-        SAMPLE_COMM_VO_UnBindVpss(VoDev,VoChn,VpssGrp,VpssChn_VoHD0);
-    }
-    SAMPLE_COMM_VO_StopChn(VoDev, enVoMode);
-    SAMPLE_COMM_VO_StopDevLayer(VoDev);
-
-END_8D1_4:
-#if HICHIP == HI3521_V100
-	VoDev = SAMPLE_VO_DEV_DSD1;
-	VoChn = 0;
-	enVoMode = VO_MODE_1MUX;
-    SAMPLE_COMM_VO_UnBindVi(VoDev,VoChn); 
-    SAMPLE_COMM_VO_StopChn(VoDev, enVoMode);
-    SAMPLE_COMM_VO_StopDevLayer(VoDev);
-#endif
-END_8D1_3:	//vi unbind vpss
-    SAMPLE_COMM_VI_UnBindVpss(enViMode);
-END_8D1_2:	//vpss stop
-    SAMPLE_COMM_VPSS_Stop(s32VpssGrpCnt, VPSS_MAX_CHN_NUM);
-END_8D1_1:	//vi stop
-    SAMPLE_COMM_VI_Stop(enViMode);
-END_8D1_0:	//system exit
-    SAMPLE_COMM_SYS_Exit();
-    
-    return s32Ret;
-}
-
-HI_S32 sample_av()
-{
-	SAMPLE_VI_MODE_E enViMode = SAMPLE_VI_MODE_8_D1;
-
-	HI_U32 u32ViChnCnt = 8;
-	HI_S32 s32VpssGrpCnt = 8;
+	SAMPLE_VI_MODE_E enViMode = SAMPLE_VI_MODE_TEST;
+	HI_U32 u32ViChnCnt = 1;
+	HI_S32 s32VpssGrpCnt = 1;
+	VPSS_GRP VpssGrp = 0;
+	VO_DEV VoDev = SAMPLE_VO_DEV_DHD0;
+	VO_CHN VoChn = 0;
+	VO_CHN VoChn_Clip = 1;
 	
 	VB_CONF_S stVbConf;
-	VI_CHN ViChn;
-	VPSS_GRP VpssGrp;
 	VPSS_GRP_ATTR_S stGrpAttr;
-	VPSS_CHN VpssChn_VoHD0 = VPSS_PRE0_CHN;
-	VO_DEV VoDev;
-	VO_CHN VoChn;
-	VO_PUB_ATTR_S stVoPubAttr,stVoPubAttrSD; 
-	SAMPLE_VO_MODE_E enVoMode, enPreVoMode;
+	VO_PUB_ATTR_S stVoPubAttr; 
+	SAMPLE_VO_MODE_E enVoMode;
+
+	SIZE_S stSize;
 		
 	HI_S32 i;
 	HI_S32 s32Ret = HI_SUCCESS;
 	HI_U32 u32BlkSize;
 	HI_CHAR ch;
-	SIZE_S stSize;
 	HI_U32 u32WndNum;
+	VIDEO_FRAME_INFO_S stFrame;
 	
-	VO_WBC_ATTR_S stWbcAttr;
 	
 	/******************************************
-	 step  1: init variable 
+	 step  1: init global  variable 
 	******************************************/
-	gs_u32ViFrmRate = (VIDEO_ENCODING_MODE_PAL== gs_enNorm)?25:30;
+	gs_u32ViFrmRate = (VIDEO_ENCODING_MODE_PAL == gs_enNorm)?25:30;
 	
 	memset(&stVbConf,0,sizeof(VB_CONF_S));
 
 	u32BlkSize = SAMPLE_COMM_SYS_CalcPicVbBlkSize(gs_enNorm,\
-				PIC_D1, SAMPLE_PIXEL_FORMAT, SAMPLE_SYS_ALIGN_WIDTH);
+				PIC_VGA, SAMPLE_PIXEL_FORMAT, SAMPLE_SYS_ALIGN_WIDTH);
 	stVbConf.u32MaxPoolCnt = 128;
-	
-	/* video buffer*/
-	//todo: vb=15
+	/*ddr0 video buffer*/
 	stVbConf.astCommPool[0].u32BlkSize = u32BlkSize;
-	stVbConf.astCommPool[0].u32BlkCnt = u32ViChnCnt * 8;
-	
+	stVbConf.astCommPool[0].u32BlkCnt = u32ViChnCnt * 6;
+
 	/******************************************
 	 step 2: mpp system init. 
 	******************************************/
@@ -2991,27 +2655,28 @@ HI_S32 sample_av()
 	if (HI_SUCCESS != s32Ret)
 	{
 		SAMPLE_PRT("system init failed with %d!\n", s32Ret);
-		goto END_8D1_0;
+		goto END_1D1_CLIP_0;
 	}
 	
+	   
 	/******************************************
-	 step 3: start vi dev & chn
+	 step 3: start vi dev & chn to capture
 	******************************************/
 	s32Ret = SAMPLE_COMM_VI_Start(enViMode, gs_enNorm);
 	if (HI_SUCCESS != s32Ret)
 	{
 		SAMPLE_PRT("start vi failed!\n");
-		goto END_8D1_0;
+		goto END_1D1_CLIP_0;
 	}
-
+	
 	/******************************************
 	 step 4: start vpss and vi bind vpss
 	******************************************/
-	s32Ret = SAMPLE_COMM_SYS_GetPicSize(gs_enNorm, PIC_D1, &stSize);
+	s32Ret = SAMPLE_COMM_SYS_GetPicSize(gs_enNorm, PIC_VGA, &stSize);
 	if (HI_SUCCESS != s32Ret)
 	{
 		SAMPLE_PRT("SAMPLE_COMM_SYS_GetPicSize failed!\n");
-		goto END_8D1_0;
+		goto END_1D1_CLIP_0;
 	}
 	
 	stGrpAttr.u32MaxW = stSize.u32Width;
@@ -3020,312 +2685,124 @@ HI_S32 sample_av()
 	stGrpAttr.bDbEn = HI_FALSE;
 	stGrpAttr.bIeEn = HI_TRUE;
 	stGrpAttr.bNrEn = HI_TRUE;
-	stGrpAttr.bHistEn = HI_FALSE;
+	stGrpAttr.bHistEn = HI_TRUE;
 	stGrpAttr.enDieMode = VPSS_DIE_MODE_AUTO;
 	stGrpAttr.enPixFmt = SAMPLE_PIXEL_FORMAT;
 	
+	// start  vpss group.
 	s32Ret = SAMPLE_COMM_VPSS_Start(s32VpssGrpCnt, &stSize, VPSS_MAX_CHN_NUM,NULL);
 	if (HI_SUCCESS != s32Ret)
 	{
 		SAMPLE_PRT("Start Vpss failed!\n");
-		goto END_8D1_1;
+		goto END_1D1_CLIP_1;
 	}
-
+	
+	// bind vi to vpss group
 	s32Ret = SAMPLE_COMM_VI_BindVpss(enViMode);
 	if (HI_SUCCESS != s32Ret)
 	{
 		SAMPLE_PRT("Vi bind Vpss failed!\n");
-		goto END_8D1_2;
+		goto END_1D1_CLIP_2;
 	}
-#if HICHIP == HI3521_V100
-	/******************************************
-	step 5: start vo SD1(CVBS)
-	******************************************/
 
-	printf("start vo SD1.\n");
-	VoDev = SAMPLE_VO_DEV_DSD1;
+	/******************************************
+	 step 5: start VO to preview
+	******************************************/
+	printf("start vo hd0\n");
 	u32WndNum = 1;
-	enVoMode = VO_MODE_1MUX;
-	
-	stVoPubAttr.enIntfSync = VO_OUTPUT_PAL;
-	stVoPubAttr.enIntfType = VO_INTF_CVBS;
-	stVoPubAttr.u32BgColor = 0x000000ff;
-	stVoPubAttr.bDoubleFrame = HI_FALSE;
-	s32Ret = SAMPLE_COMM_VO_StartDevLayer(VoDev, &stVoPubAttr, gs_u32ViFrmRate);
-	if (HI_SUCCESS != s32Ret)
-	{
-		 SAMPLE_PRT("SAMPLE_COMM_VO_StartDevLayer failed!\n");
-		 goto END_8D1_3;
-	}
-
-	s32Ret = SAMPLE_COMM_VO_StartChn(VoDev, &stVoPubAttr, enVoMode);
-	if (HI_SUCCESS != s32Ret)
-	{
-		 SAMPLE_PRT("SAMPLE_COMM_VO_StartChn failed!\n");
-		 goto END_8D1_4;
-	}
-
-	VoChn = 0;
-	ViChn = 0;
-	s32Ret = SAMPLE_COMM_VO_BindVi(VoDev,VoChn, ViChn);
-	if (HI_SUCCESS != s32Ret)
-	{
-		 SAMPLE_PRT("SAMPLE_COMM_VO_BindVpss failed!\n");
-		 goto END_8D1_4;
-	}
-#endif	
-	/******************************************
-	 step 6: start vo HD0 (HDMI+VGA), multi-screen, you can switch mode
-	******************************************/
-	printf("start vo HD0.\n");
-	VoDev = SAMPLE_VO_DEV_DHD0;
-	u32WndNum = 16;
 	enVoMode = VO_MODE_1MUX;
 
 	if(VIDEO_ENCODING_MODE_PAL == gs_enNorm)
 	{
-		//stVoPubAttr.enIntfSync = VO_OUTPUT_1080P50;
-		stVoPubAttr.enIntfSync = VO_OUTPUT_1024x768_60;
+		stVoPubAttr.enIntfSync = VO_OUTPUT_1440x900_60;
+		stVoPubAttr.enIntfType = VO_INTF_VGA;
 	}
 	else
 	{
-		//stVoPubAttr.enIntfSync = VO_OUTPUT_1080P60;
 		stVoPubAttr.enIntfSync = VO_OUTPUT_1024x768_60;
+		stVoPubAttr.enIntfType = VO_INTF_LCD;
 	}
-
-	//stVoPubAttr.enIntfType = VO_INTF_HDMI|VO_INTF_VGA;
-	stVoPubAttr.enIntfType = VO_INTF_LCD;
-	
 	stVoPubAttr.u32BgColor = 0x000000ff;
 	stVoPubAttr.bDoubleFrame = HI_TRUE;
-		
+
 	s32Ret = SAMPLE_COMM_VO_StartDevLayer(VoDev, &stVoPubAttr, gs_u32ViFrmRate);
 	if (HI_SUCCESS != s32Ret)
 	{
-		SAMPLE_PRT("Start SAMPLE_COMM_VO_StartDevLayer failed!\n");
-		goto END_8D1_4;
+		SAMPLE_PRT("SAMPLE_COMM_VO_StartDevLayer failed!\n");
+		goto END_1D1_CLIP_3;
 	}
-
+		
 	s32Ret = SAMPLE_COMM_VO_StartChn(VoDev, &stVoPubAttr, enVoMode);
 	if (HI_SUCCESS != s32Ret)
 	{
-		SAMPLE_PRT("Start SAMPLE_COMM_VO_StartChn failed!\n");
-		goto END_8D1_5;
+		SAMPLE_PRT("SAMPLE_COMM_VO_StartChn failed!\n");
+		goto END_1D1_CLIP_4;
+	}
+	s32Ret = SAMPLE_COMM_VO_BindVpss(VoDev,VoChn,VpssGrp,VPSS_PRE0_CHN);
+	if (HI_SUCCESS != s32Ret)
+	{
+		SAMPLE_PRT("SAMPLE_COMM_VO_BindVpss failed!\n");
+		goto END_1D1_CLIP_4;
 	}
 	
-	/* if it's displayed on HDMI, we should start HDMI */
-	if (stVoPubAttr.enIntfType & VO_INTF_HDMI)
-	{
-		if (HI_SUCCESS != SAMPLE_COMM_VO_HdmiStart(stVoPubAttr.enIntfSync))
+	printf("\npress 'q' to stop sample ... ... \n");
+	printf("\npress 's' to save picture from vin ... ... \n");
+	while('q' != (ch = getchar()) )  {
+		#if 0
+		if( 's' == ch ){
+		FILE *pfd;
+		int height,width;
+		pfd = fopen("vin.yuv", "rb");
+		if (!pfd)
 		{
-			SAMPLE_PRT("Start SAMPLE_COMM_VO_HdmiStart failed!\n");
-			goto END_8D1_5;
+		  printf("open file -> %s fail \n", "vin.yuv");
+		  return -1;
+		};
+		HI_MPI_VI_GetFrame(0, &stFrame);
+		width = stFrame.stVFrame.u32Width;
+		height = stFrame.stVFrame.u32Height;
+		fwrite(stFrame.stVFrame.pVirAddr[0],1,width*height,pfd);
+		fwrite(stFrame.stVFrame.pVirAddr[1],1,width*height/2,pfd);
+		fwrite(stFrame.stVFrame.pVirAddr[2],1,width*height/2,pfd);
+		HI_MPI_VI_ReleaseFrame(0,&stFrame);
+		fclose(pfd);
 		}
-	}
-	
-	for(i=0;i<u32WndNum;i++)
-	{
-		VoChn = i;
-		VpssGrp = i;
-		
-		s32Ret = SAMPLE_COMM_VO_BindVpss(VoDev,VoChn,VpssGrp,VpssChn_VoHD0);
-		if (HI_SUCCESS != s32Ret)
-		{
-			SAMPLE_PRT("Start VO failed!\n");
-			goto END_8D1_5;
-		}
-	}
-	
-	/******************************************
-	step 7: start vo SD0 (CVBS) (WBC target) 
-	******************************************/
-	printf("start vo SD0: wbc from hd0\n");
-	VoDev = SAMPLE_VO_DEV_DSD0;
-	u32WndNum = 1;
-	enVoMode = VO_MODE_1MUX;
-	
-	stVoPubAttrSD.enIntfSync = VO_OUTPUT_PAL;
-	stVoPubAttrSD.enIntfType = VO_INTF_CVBS;
-	stVoPubAttrSD.u32BgColor = 0x000000ff;
-	stVoPubAttrSD.bDoubleFrame = HI_FALSE;
-	s32Ret = SAMPLE_COMM_VO_StartDevLayer(VoDev, &stVoPubAttrSD, gs_u32ViFrmRate);
-	if (HI_SUCCESS != s32Ret)
-	{
-		  SAMPLE_PRT("SAMPLE_COMM_VO_StartDevLayer failed!\n");
-		  goto END_8D1_5;
-	}
-	
-	s32Ret = SAMPLE_COMM_VO_StartChn(VoDev, &stVoPubAttrSD, enVoMode);
-	if (HI_SUCCESS != s32Ret)
-	{
-		  SAMPLE_PRT("SAMPLE_COMM_VO_StartChn failed!\n");
-		  goto END_8D1_6;
-	}
-		  
-	s32Ret = SAMPLE_COMM_VO_GetWH(VO_OUTPUT_PAL, \
-					  &stWbcAttr.stTargetSize.u32Width, \
-					  &stWbcAttr.stTargetSize.u32Height, \
-					  &stWbcAttr.u32FrameRate);
-	if (HI_SUCCESS != s32Ret)
-	{
-		SAMPLE_PRT("SAMPLE_COMM_VO_GetWH failed!\n");
-		goto END_8D1_6;
-	}
-	stWbcAttr.enPixelFormat = SAMPLE_PIXEL_FORMAT;
-	
-	s32Ret = HI_MPI_VO_SetWbcAttr(SAMPLE_VO_DEV_DHD0, &stWbcAttr);
-	if (HI_SUCCESS != s32Ret)
-	{
-		SAMPLE_PRT("HI_MPI_VO_SetWbcAttr failed!\n");
-		goto END_8D1_6;
-	}
-	
-	s32Ret = HI_MPI_VO_EnableWbc(SAMPLE_VO_DEV_DHD0);
-	if (HI_SUCCESS != s32Ret)
-	{
-		SAMPLE_PRT("HI_MPI_VO_SetWbcAttr failed!\n");
-		goto END_8D1_7;
-	}
-	
-	s32Ret = SAMPLE_COMM_VO_BindVoWbc(SAMPLE_VO_DEV_DHD0, SAMPLE_VO_DEV_DSD0, 0);
-	if (HI_SUCCESS != s32Ret)
-	{
-		SAMPLE_PRT("HI_MPI_VO_SetWbcAttr failed!\n");
-		goto END_8D1_7;
+		#endif
+
 	}
 		
 	/******************************************
-	step 8: HD0 switch mode 
+	 step 7: exit process
 	******************************************/
-	VoDev = SAMPLE_VO_DEV_DHD0;
-	enVoMode = VO_MODE_1MUX;
-	while(1)
-	{
-		enPreVoMode = enVoMode;
+END_1D1_CLIP_4:
+    for(i=0;i<u32WndNum;i++)
+    {
+        VoChn = i;
+        VpssGrp = i;
+        SAMPLE_COMM_VO_UnBindVpss(VoDev, VoChn, VpssGrp, VPSS_PRE0_CHN);
+    }
 
-		printf("please choose preview mode, press 'q' to exit this sample.\n"); 
-		printf("\t0) 1 preview\n");
-		printf("\t1) 4 preview\n");
-		printf("\t2) 8 preview\n");
-		printf("\tq) quit\n");
-	
-		ch = getchar();
-		getchar();
-		if ('0' == ch)
-		{
-			u32WndNum = 1;
-			enVoMode = VO_MODE_1MUX;
-		}
-		else if ('1' == ch)
-		{
-			u32WndNum = 4;
-			enVoMode = VO_MODE_4MUX;
-		}
-		/*Indeed only 8 chns show*/
-		else if ('2' == ch)
-		{
-			u32WndNum = 9;
-			enVoMode = VO_MODE_9MUX;
-		}
-		else if ('q' == ch)
-		{
-			break;
-		}
-		else
-		{
-			SAMPLE_PRT("preview mode invaild! please try again.\n");
-			continue;
-		}
-		SAMPLE_PRT("vo(%d) switch to %d mode\n", VoDev, u32WndNum);
-	
-		s32Ret= HI_MPI_VO_SetAttrBegin(VoDev);
-		if (HI_SUCCESS != s32Ret)
-		{
-			SAMPLE_PRT("Start VO failed!\n");
-			goto END_8D1_7;
-		}
-		
-		s32Ret = SAMPLE_COMM_VO_StopChn(VoDev, enPreVoMode);
-		if (HI_SUCCESS != s32Ret)
-		{
-			SAMPLE_PRT("Start VO failed!\n");
-			goto END_8D1_7;
-		}
-
-		s32Ret = SAMPLE_COMM_VO_StartChn(VoDev, &stVoPubAttr, enVoMode);
-		if (HI_SUCCESS != s32Ret)
-		{
-			SAMPLE_PRT("Start VO failed!\n");
-			goto END_8D1_7;
-		}
-		s32Ret= HI_MPI_VO_SetAttrEnd(VoDev);
-		if (HI_SUCCESS != s32Ret)
-		{
-			SAMPLE_PRT("Start VO failed!\n");
-			goto END_8D1_7;
-		}
-	}
-	
-	/******************************************
-	 step 8: exit process
-	******************************************/
-
-END_8D1_7:
-	SAMPLE_COMM_VO_UnBindVoWbc(SAMPLE_VO_DEV_DSD0, 0);
-	HI_MPI_VO_DisableWbc(SAMPLE_VO_DEV_DHD0);
-	
-END_8D1_6:
-	VoDev = SAMPLE_VO_DEV_DSD0;
-	VoChn = 0;
-	enVoMode = VO_MODE_1MUX;
-	SAMPLE_COMM_VO_StopChn(VoDev, enVoMode);
-	SAMPLE_COMM_VO_StopDevLayer(VoDev);
-	
-END_8D1_5:
-	if (stVoPubAttr.enIntfType & VO_INTF_HDMI)
-	{
-		SAMPLE_COMM_VO_HdmiStop();
-	}
-	VoDev = SAMPLE_VO_DEV_DHD0;
-	u32WndNum = 16;
-	enVoMode = VO_MODE_16MUX;
-	for(i=0;i<u32WndNum;i++)
-	{
-		VoChn = i;
-		VpssGrp = i;
-		SAMPLE_COMM_VO_UnBindVpss(VoDev,VoChn,VpssGrp,VpssChn_VoHD0);
-	}
-	SAMPLE_COMM_VO_StopChn(VoDev, enVoMode);
-	SAMPLE_COMM_VO_StopDevLayer(VoDev);
-	
-END_8D1_4:
-#if HICHIP == HI3521_V100
-	VoDev = SAMPLE_VO_DEV_DSD1;
-	VoChn = 0;
-	enVoMode = VO_MODE_1MUX;
-	SAMPLE_COMM_VO_UnBindVi(VoDev,VoChn); 
-	SAMPLE_COMM_VO_StopChn(VoDev, enVoMode);
-	SAMPLE_COMM_VO_StopDevLayer(VoDev);
-#endif
-END_8D1_3:	//vi unbind vpss
-	SAMPLE_COMM_VI_UnBindVpss(enViMode);
-END_8D1_2:	//vpss stop
-	SAMPLE_COMM_VPSS_Stop(s32VpssGrpCnt, VPSS_MAX_CHN_NUM);
-END_8D1_1:	//vi stop
-	SAMPLE_COMM_VI_Stop(enViMode);
-END_8D1_0:	//system exit
-	SAMPLE_COMM_SYS_Exit();
-		
-	return s32Ret;
+    SAMPLE_COMM_VO_StopChn(VoDev, enVoMode);
+    HI_MPI_VO_DisableChn(VoDev, VoChn_Clip);
+    SAMPLE_COMM_VO_StopDevLayer(VoDev);
+END_1D1_CLIP_3:
+    SAMPLE_COMM_VI_UnBindVpss(enViMode);
+END_1D1_CLIP_2:
+    SAMPLE_COMM_VPSS_Stop(s32VpssGrpCnt, VPSS_MAX_CHN_NUM);
+END_1D1_CLIP_1:
+    SAMPLE_COMM_VI_Stop(enViMode);
+END_1D1_CLIP_0:
+    SAMPLE_COMM_SYS_Exit();
+    
+    return s32Ret;
 }
-
 
 HI_S32 sample_capture_only()
 {
 	HI_S32 s32Ret;
-	#define CMOS_CAPTURE_DEV  3;
+	#define CMOS_CAPTURE_DEV  1;
 	VI_DEV ViDev = CMOS_CAPTURE_DEV;
-	VI_CHN ViChn = 12;
+	VI_CHN ViChn = 0;
 	VI_DEV_ATTR_S stDevAttr;
 	VI_CHN_ATTR_S stChnAttr;
 	char ch;
@@ -3473,7 +2950,6 @@ HI_S32 sample_capture_only()
             SAMPLE_PRT("failed with %#x!\n", s32Ret);
             return HI_FAILURE;
         }
-		#if 0
 		VPSS_PRESCALE_INFO_S pstPreScaleInfo;
 		memset(&pstPreScaleInfo,0,sizeof(VPSS_PRESCALE_INFO_S));
 		pstPreScaleInfo.bPreScale = HI_TRUE;
@@ -3487,7 +2963,7 @@ HI_S32 sample_capture_only()
             SAMPLE_PRT("failed with %#x!\n", s32Ret);
             return HI_FAILURE;
         }
-#endif
+
         /*** enable vpss chn, with frame ***/
         for(j=0; j<s32ChnCnt; j++)
         {
@@ -3705,13 +3181,10 @@ int main(int argc, char *argv[])
             s32Ret = SAMPLE_VIO_1VGA_LCDZoom();
             break;
 		case '8':
-			s32Ret = sample_av();
+			s32Ret = sample_ov7725();
             break;
 		case '9':
 			s32Ret = sample_capture_only();
-			break;
-		case 'a':
-			s32Ret = sample_avandcmos();
 			break;
         default:
             printf("the index is invaild!\n");
