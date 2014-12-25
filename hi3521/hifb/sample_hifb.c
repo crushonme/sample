@@ -948,7 +948,7 @@ int main(int argc, char *argv[])
 	
 	stPubAttr.u32BgColor = 0xff00ff00;
 	stPubAttr.enIntfType = VO_INTF_VGA;
-    stPubAttr.enIntfSync = VO_OUTPUT_720P50;
+    stPubAttr.enIntfSync = VO_OUTPUT_1366x768_60;//VO_OUTPUT_720P50;
 	stPubAttr.bDoubleFrame = HI_FALSE;
 	
 	signal(SIGINT, SAMPLE_VIO_HandleSig);
